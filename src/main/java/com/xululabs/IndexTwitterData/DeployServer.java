@@ -1,16 +1,4 @@
 package com.xululabs.IndexTwitterData;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Map;
-
-import org.codehaus.jackson.map.ObjectMapper;
-import org.elasticsearch.action.bulk.BulkRequestBuilder;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-
-import com.xululabs.twitter.Twitter4jApi;
-
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
@@ -18,7 +6,21 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CorsHandler;
+
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
+
 import twitter4j.Twitter;
+
+import com.xululabs.twitter.Twitter4jApi;
 public class DeployServer extends AbstractVerticle {
   HttpServer server;
   Router router;
@@ -27,6 +29,7 @@ public class DeployServer extends AbstractVerticle {
   Twitter4jApi twitter4jApi;
   String esHost = "localhost";
   int esPort = 9300;
+  int bulkSize = 1000;
 
   public DeployServer() {
 
@@ -79,12 +82,10 @@ public class DeployServer extends AbstractVerticle {
    */
   public void search(RoutingContext routingContext) {
     String response;
-    String keyword = (routingContext.request().getParam("keyword") == null) ? "iphone"
-        : routingContext.request().getParam("keyword");
+    String keyword = (routingContext.request().getParam("keyword") == null) ? "iphone" : routingContext.request().getParam("keyword");
     try {
       response = new ObjectMapper().writeValueAsString(this.searchTweets(this.getTwitterInstance(), keyword));
     } catch (Exception ex) {
-      // TODO Auto-generated catch block
       response = "{status: 'error', 'msg' : " + ex.getMessage() + "}";
     }
     routingContext.response().end(response);
@@ -97,17 +98,22 @@ public class DeployServer extends AbstractVerticle {
    * @param routingContext
    * @throws Exception
    */
+  @SuppressWarnings("unchecked")
   public void indexTweets(RoutingContext routingContext) {
     String response;
-    String keyword = (routingContext.request().getParam("keyword") == null) ? "iphone"
-        : routingContext.request().getParam("keyword");
+    String keyword = (routingContext.request().getParam("keyword") == null) ? "iphone" : routingContext.request().getParam("keyword");
     try {
-      ArrayList tweets = this.searchTweets(this.getTwitterInstance(), keyword);
-      this.indexInES(tweets);
+      ArrayList<Map<String, Object>> tweets = this.searchTweets(this.getTwitterInstance(), keyword);
+      List<ArrayList<Map<String, Object>>> bulks = new LinkedList<ArrayList<Map<String, Object>>>();
+      for (int i = 0; i < tweets.size(); i += bulkSize) {
+        ArrayList<Map<String, Object>>  bulk = new  ArrayList<Map<String, Object>>(tweets.subList(i, Math.min(i + bulkSize, tweets.size())));
+        bulks.add(bulk);
+      }
+      for(ArrayList<Map<String, Object>> tweetsList : bulks){
+              this.indexInES(tweetsList);
+      }    
       response = "{status : 'success'}";
-      // response = new ObjectMapper().writeValueAsString();
     } catch (Exception ex) {
-      // TODO Auto-generated catch block
       response = "{status: 'error', 'msg' : " + ex.getMessage() + "}";
     }
     routingContext.response().end(response);
@@ -134,18 +140,13 @@ public class DeployServer extends AbstractVerticle {
    * @throws UnknownHostException
    */
   public void indexInES(ArrayList<Map<String, Object>> tweets) throws UnknownHostException {
-    long startTime = System.currentTimeMillis();
     TransportClient client = this.esClient(this.esHost, this.esPort);
-    BulkRequestBuilder bulkRequestBuilder = client.prepareBulk();
+    BulkRequestBuilder bulkRequestBuilder = client.prepareBulk();   
     for(Map<String, Object> tweet : tweets){
     bulkRequestBuilder.add(client.prepareUpdate("twitter", "tweets", tweet.get("id").toString()).setDoc(tweet).setUpsert(tweet));
     }
-    BulkResponse bulkResponse = bulkRequestBuilder.execute().actionGet();
+    bulkRequestBuilder.execute().actionGet();
     client.close();
-      long endTime   = System.currentTimeMillis();
-      long totalTime = endTime - startTime;
-      System.out.println("Total program execution time : " + totalTime / 1000 );
-
   }
   
   /**
@@ -156,8 +157,7 @@ public class DeployServer extends AbstractVerticle {
    * @throws UnknownHostException
    */
   public TransportClient esClient(String esHost, int esPort) throws UnknownHostException{
-    TransportClient client = new TransportClient()
-            .addTransportAddress(new InetSocketTransportAddress(esHost, esPort));
+    TransportClient client = new TransportClient().addTransportAddress(new InetSocketTransportAddress(esHost, esPort));
     return client;
   }
 

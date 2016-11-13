@@ -25,22 +25,20 @@ public class Twitter4jApi {
   }
   
   public ArrayList<Map<String, Object>> search(Twitter twitter, String keyword) throws Exception{
-    ArrayList<Map<String, Object>> tweets = new ArrayList<Map<String, Object>>();
-    Query query = new Query(keyword);
-    query.setCount(100);
-
     int searchResultCount = 0;
     long lowestTweetId = Long.MAX_VALUE;
     int tweetsCount = 0;
     int requestsCount = 0;
-
+    
+    ArrayList<Map<String, Object>> tweets = new ArrayList<Map<String, Object>>();  
+    Query query = new Query(keyword);
+    query.setCount(100);
     do {
         QueryResult queryResult;
       try {
-        System.out.println(requestsCount + " : searching tweets for : " + keyword + ", tweets : " + tweetsCount);
         queryResult = twitter.search(query);
           searchResultCount = queryResult.getTweets().size();
-                 requestsCount++;
+           requestsCount++;
           for (Status tweet : queryResult.getTweets()) {
             Map<String, Object> tweetInfo = new HashMap<String, Object>();
             tweetInfo.put("id", tweet.getId());
@@ -48,25 +46,16 @@ public class Twitter4jApi {
             tweetInfo.put("screenName", tweet.getUser().getScreenName());
             tweets.add(tweetInfo);
             tweetsCount++;
-                    
-              // do whatever with the tweet
-
               if (tweet.getId() < lowestTweetId) {
                   lowestTweetId = tweet.getId();
                   query.setMaxId(lowestTweetId);
-              }
-              
+              }           
           }
       } catch (TwitterException e) {
         break;
-      }
-
-  
-
-    } while (true);
-    System.out.println("tweets count : " + tweetsCount + ", request count = " + requestsCount);
-    
-        twitter = null;
+      } 
+    } while (true);   
+    twitter = null;
     return tweets;
     
   }
