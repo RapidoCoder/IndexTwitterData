@@ -73,7 +73,7 @@
 		<resources>
 			<!-- regular resource -->
 			<resource>
-				<directory>src/main/resources</directory>
+				<directory>resources</directory>
 				<includes>
 					<include>**/*</include>
 				</includes>
@@ -110,7 +110,7 @@
 							</descriptorRefs>
 							<archive>
 								<manifest>
-									<mainClass>com.xululabs.IndexTwitter.Main</mainClass>
+									<mainClass>com.xululabs.IndexTwitterData.Main</mainClass>
 								</manifest>
 							</archive>
 						</configuration>

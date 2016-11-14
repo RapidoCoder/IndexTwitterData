@@ -14,9 +14,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.codehaus.jackson.map.ObjectMapper;
+import org.elasticsearch.action.bulk.BulkProcessor;
+import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.common.unit.ByteSizeUnit;
+import org.elasticsearch.common.unit.ByteSizeValue;
+import org.elasticsearch.common.unit.TimeValue;
 
 import twitter4j.Twitter;
 
@@ -33,10 +39,11 @@ public class DeployServer extends AbstractVerticle {
   public DeployServer() {
 
     this.host = "localhost";
-    this.port = 8383;
+    this.port = 8484;
     this.twitter4jApi = new Twitter4jApi();
     this.esHost = "localhost";
-    this.bulkSize = 1000;
+    this.esPort = 9300;
+    this.bulkSize = 500;
 
   }
 
@@ -142,11 +149,13 @@ public class DeployServer extends AbstractVerticle {
    */
   public void indexInES(ArrayList<Map<String, Object>> tweets) throws UnknownHostException {
     TransportClient client = this.esClient(this.esHost, this.esPort);
+  
     BulkRequestBuilder bulkRequestBuilder = client.prepareBulk();   
     for(Map<String, Object> tweet : tweets){
     bulkRequestBuilder.add(client.prepareUpdate("twitter", "tweets", tweet.get("id").toString()).setDoc(tweet).setUpsert(tweet));
     }
-    bulkRequestBuilder.execute().actionGet();
+    bulkRequestBuilder.setRefresh(true).execute().actionGet();
+   
     client.close();
   }
   
