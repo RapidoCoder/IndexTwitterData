@@ -44,6 +44,8 @@ public class Twitter4jApi {
             tweetInfo.put("id", tweet.getId());
             tweetInfo.put("tweet", tweet.getText());
             tweetInfo.put("screenName", tweet.getUser().getScreenName());
+            tweetInfo.put("retweetCount", tweet.getRetweetCount());
+            tweetInfo.put("followersCount", tweet.getUser().getFollowersCount());
             tweets.add(tweetInfo);
             tweetsCount++;
               if (tweet.getId() < lowestTweetId) {

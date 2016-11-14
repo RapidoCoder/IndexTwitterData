@@ -26,16 +26,17 @@ public class DeployServer extends AbstractVerticle {
   Router router;
   String host;
   int port;
+  String esHost;
+  int esPort;
+  int bulkSize;
   Twitter4jApi twitter4jApi;
-  String esHost = "localhost";
-  int esPort = 9300;
-  int bulkSize = 1000;
-
   public DeployServer() {
 
     this.host = "localhost";
     this.port = 8383;
     this.twitter4jApi = new Twitter4jApi();
+    this.esHost = "localhost";
+    this.bulkSize = 1000;
 
   }
 
